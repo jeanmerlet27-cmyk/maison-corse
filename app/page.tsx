@@ -80,7 +80,6 @@ export default function Page() {
     const startOffset = weekdayIndexMonFirst(first); // 0..6
     const dim = daysInMonth(year, month);
 
-    // 6 weeks x 7 days = 42 cells
     const cells: { iso: string | null; label: string }[] = [];
     for (let i = 0; i < 42; i++) {
       const dayNum = i - startOffset + 1;
@@ -98,7 +97,7 @@ export default function Page() {
     return `${MONTHS_FR[month]} ${year}`;
   }
 
-  // ✅ Modif 3: navigation illimitée
+  // navigation illimitée
   function goPrevMonth() {
     setMessage(null);
     setEditing(null);
@@ -137,7 +136,7 @@ export default function Page() {
       return;
     }
     if (end < start) {
-      setMessage("La date de fin doit être après la date de début.");
+      setMessage("La date de départ doit être après la date d’arrivée.");
       return;
     }
 
@@ -188,7 +187,7 @@ export default function Page() {
       return;
     }
     if (editEnd < editStart) {
-      setMessage("La date de fin doit être après la date de début.");
+      setMessage("La date de départ doit être après la date d’arrivée.");
       return;
     }
 
@@ -248,7 +247,7 @@ export default function Page() {
     setEditLoading(false);
   }
 
-  // ✅ Select année pratique : fenêtre ±20 ans autour de l’année courante affichée
+  // Select année pratique : fenêtre ±20 ans autour de l’année courante
   function yearOptions() {
     const opts: any[] = [];
     for (let y = year - 20; y <= year + 20; y++) {
@@ -327,18 +326,24 @@ export default function Page() {
           className: "input",
           placeholder: "Nom"
         }),
-        h("input", {
-          type: "date",
-          value: editStart,
-          onChange: (e: any) => setEditStart(e.target.value),
-          className: "input"
-        }),
-        h("input", {
-          type: "date",
-          value: editEnd,
-          onChange: (e: any) => setEditEnd(e.target.value),
-          className: "input"
-        })
+        h("div", { style: { width: "100%" } },
+          h("div", { style: { fontWeight: 800, marginBottom: 6 } }, "Date d’arrivée"),
+          h("input", {
+            type: "date",
+            value: editStart,
+            onChange: (e: any) => setEditStart(e.target.value),
+            className: "input"
+          })
+        ),
+        h("div", { style: { width: "100%" } },
+          h("div", { style: { fontWeight: 800, marginBottom: 6 } }, "Date de départ"),
+          h("input", {
+            type: "date",
+            value: editEnd,
+            onChange: (e: any) => setEditEnd(e.target.value),
+            className: "input"
+          })
+        )
       ),
       h("div", { className: "row" },
         h(
@@ -360,7 +365,6 @@ export default function Page() {
     );
   }
 
-  // Ton image Unsplash (URL directe)
   const backgroundImageDirect =
     "https://images.unsplash.com/photo-1592986471102-83f98319fe2d?auto=format&fit=crop&fm=jpg&q=80&w=2400";
 
@@ -388,14 +392,15 @@ export default function Page() {
           .overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.62); backdrop-filter: blur(2px); }
 
           .layout { display: grid; grid-template-columns: 1.25fr 0.95fr; gap: 16px; align-items: start; }
+          .leftCol, .rightCol { display: block; }
           .card { background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); }
           .cardTitle { font-weight: 900; font-size: 18px; margin-bottom: 10px; }
 
           .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-          .input, select { padding: 12px 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.18); background: white; font-size: 16px; }
-          .btnPrimary { padding: 12px 14px; border-radius: 12px; border: 1px solid #111; background: #111; color: white; font-weight: 900; cursor: pointer; }
-          .btnGhost { padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.18); background: white; font-weight: 800; cursor: pointer; }
-          .btnDanger { padding: 12px 14px; border-radius: 12px; border: 1px solid #e11d48; background: rgba(255,255,255,0.9); color: #e11d48; font-weight: 900; cursor: pointer; }
+          .input, select { padding: 12px 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.18); background: white; font-size: 16px; width: 100%; }
+          .btnPrimary { padding: 12px 14px; border-radius: 12px; border: 1px solid #111; background: #111; color: white; font-weight: 900; cursor: pointer; width: 100%; }
+          .btnGhost { padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.18); background: white; font-weight: 800; cursor: pointer; width: 100%; }
+          .btnDanger { padding: 12px 14px; border-radius: 12px; border: 1px solid #e11d48; background: rgba(255,255,255,0.9); color: #e11d48; font-weight: 900; cursor: pointer; width: 100%; }
 
           .muted { opacity: 0.75; margin: 10px 0 0; }
 
@@ -415,12 +420,20 @@ export default function Page() {
           .list { margin: 0; padding-left: 18px; }
           .link { border: none; background: transparent; text-decoration: underline; cursor: pointer; padding: 0; font-size: 14px; }
 
+          /* Desktop widths */
+          @media (min-width: 901px) {
+            .input, select { width: auto; }
+            .btnPrimary, .btnGhost, .btnDanger { width: auto; }
+            .row .input { width: auto; }
+          }
+
+          /* ✅ Mobile: order = New reservation first (rightCol), then calendar (leftCol), then list stays in rightCol under form */
           @media (max-width: 900px) {
             .layout { grid-template-columns: 1fr; }
+            .rightCol { order: 1; }
+            .leftCol { order: 2; }
             .title { font-size: 26px; }
             .cell { height: 68px; }
-            .input, select { width: 100%; }
-            .btnPrimary, .btnGhost, .btnDanger { width: 100%; }
           }
         `
       }
@@ -439,41 +452,45 @@ export default function Page() {
         "div",
         { className: "layout" },
 
-        // LEFT: Calendar
+        // LEFT: Calendar (will be second on mobile)
         h(
           "div",
-          { className: "card" },
-          h("div", { className: "cardTitle" }, "Calendrier"),
-
+          { className: "leftCol" },
           h(
             "div",
-            { className: "calHeader" },
-            h("button", { className: "navBtn", onClick: goPrevMonth }, "◀"),
-            h("div", { className: "calTitle" }, monthLabel()),
-            h("button", { className: "navBtn", onClick: goNextMonth }, "▶")
-          ),
+            { className: "card" },
+            h("div", { className: "cardTitle" }, "Calendrier"),
 
-          // quick year jump (optional but useful)
-          h("div", { className: "row", style: { marginBottom: 6 } },
-            h("select", {
-              value: year,
-              onChange: (e: any) => { setYear(Number(e.target.value)); setEditing(null); setMessage(null); }
-            }, ...yearOptions())
-          ),
+            h(
+              "div",
+              { className: "calHeader" },
+              h("button", { className: "navBtn", onClick: goPrevMonth }, "◀"),
+              h("div", { className: "calTitle" }, monthLabel()),
+              h("button", { className: "navBtn", onClick: goNextMonth }, "▶")
+            ),
 
-          weekdayHeader(),
-          calendarBody(),
+            h("div", { className: "row", style: { marginBottom: 6 } },
+              h("select", {
+                value: year,
+                onChange: (e: any) => { setYear(Number(e.target.value)); setEditing(null); setMessage(null); }
+              }, ...yearOptions())
+            ),
 
-          h("p", { className: "muted" },
-            "Astuce : clique sur un jour réservé pour modifier / supprimer."
+            weekdayHeader(),
+            calendarBody(),
+
+            h("p", { className: "muted" },
+              "Astuce : clique sur un jour réservé pour modifier / supprimer."
+            )
           )
         ),
 
-        // RIGHT: Create + Edit + List
+        // RIGHT: New reservation + edit + list (will be first on mobile)
         h(
           "div",
-          null,
+          { className: "rightCol" },
 
+          // New reservation first
           h(
             "div",
             { className: "card" },
@@ -486,18 +503,27 @@ export default function Page() {
                 value: name,
                 onChange: (e: any) => setName(e.target.value)
               }),
-              h("input", {
-                className: "input",
-                type: "date",
-                value: start,
-                onChange: (e: any) => setStart(e.target.value)
-              }),
-              h("input", {
-                className: "input",
-                type: "date",
-                value: end,
-                onChange: (e: any) => setEnd(e.target.value)
-              }),
+
+              h("div", { style: { width: "100%" } },
+                h("div", { style: { fontWeight: 800, marginBottom: 6 } }, "Date d’arrivée"),
+                h("input", {
+                  className: "input",
+                  type: "date",
+                  value: start,
+                  onChange: (e: any) => setStart(e.target.value)
+                })
+              ),
+
+              h("div", { style: { width: "100%" } },
+                h("div", { style: { fontWeight: 800, marginBottom: 6 } }, "Date de départ"),
+                h("input", {
+                  className: "input",
+                  type: "date",
+                  value: end,
+                  onChange: (e: any) => setEnd(e.target.value)
+                })
+              ),
+
               h(
                 "button",
                 { className: "btnPrimary", onClick: createReservation, disabled: loading },
@@ -508,8 +534,10 @@ export default function Page() {
             message ? h("p", { style: { marginTop: 10 } }, message) : null
           ),
 
+          // Edit panel
           editing ? h("div", { style: { marginTop: 16 } }, editPanel()) : null,
 
+          // List last
           h(
             "div",
             { className: "card", style: { marginTop: 16 } },
