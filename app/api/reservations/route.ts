@@ -135,3 +135,29 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: e.message || "Erreur serveur" }, { status: 500 });
   }
 }
+/**
+ * DELETE → supprimer une réservation (id requis)
+ */
+export async function DELETE(req: Request) {
+  try {
+    const body = await req.json();
+    const id = String(body?.id || "");
+
+    if (!id) {
+      return NextResponse.json({ error: "ID requis." }, { status: 400 });
+    }
+
+    const supabase = supabaseAdmin();
+
+    const { error } = await supabase.from("reservations").delete().eq("id", id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e.message || "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}
