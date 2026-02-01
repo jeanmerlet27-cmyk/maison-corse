@@ -15,9 +15,6 @@ const MONTHS_FR = [
   "Juillet","Août","Septembre","Octobre","Novembre","Décembre"
 ];
 
-const MIN_YEAR = 2026;
-const MAX_YEAR = 2030;
-
 function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
@@ -117,42 +114,35 @@ export default function Page() {
     return `${MONTHS_FR[month]} ${year}`;
   }
 
+
+
   function goPrevMonth() {
-    setMessage(null);
-    setEditing(null);
+  setMessage(null);
+  setEditing(null);
 
-    setMonth((m) => {
-      if (m === 0) {
-        setYear((y) => {
-          const ny = y - 1;
-          return ny < MIN_YEAR ? MIN_YEAR : ny;
-        });
-        // if we hit MIN_YEAR and already Jan, stay Jan
-        if (year <= MIN_YEAR) return 0;
-        return 11;
-      }
-      return m - 1;
-    });
-  }
+  setMonth((m) => {
+    if (m === 0) {
+      setYear((y) => y - 1);
+      return 11;
+    }
+    return m - 1;
+  });
+}
 
-  function goNextMonth() {
-    setMessage(null);
-    setEditing(null);
+function goNextMonth() {
+  setMessage(null);
+  setEditing(null);
 
-    setMonth((m) => {
-      if (m === 11) {
-        setYear((y) => {
-          const ny = y + 1;
-          return ny > MAX_YEAR ? MAX_YEAR : ny;
-        });
-        // if we hit MAX_YEAR and already Dec, stay Dec
-        if (year >= MAX_YEAR) return 11;
-        return 0;
-      }
-      return m + 1;
-    });
-  }
+  setMonth((m) => {
+    if (m === 11) {
+      setYear((y) => y + 1);
+      return 0;
+    }
+    return m + 1;
+  });
+}
 
+  
   function reservationForDay(dayIso: string) {
     return sorted.find((r) => r.start_date <= dayIso && dayIso <= r.end_date) || null;
   }
@@ -484,7 +474,6 @@ export default function Page() {
               {
                 className: "navBtn",
                 onClick: goPrevMonth,
-                disabled: year === MIN_YEAR && month === 0
               },
               "◀"
             ),
@@ -494,7 +483,6 @@ export default function Page() {
               {
                 className: "navBtn",
                 onClick: goNextMonth,
-                disabled: year === MAX_YEAR && month === 11
               },
               "▶"
             )
