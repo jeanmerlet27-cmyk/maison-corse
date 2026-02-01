@@ -385,6 +385,8 @@ export default function Page() {
     h("style", {
       dangerouslySetInnerHTML: {
         __html: `
+          * { box-sizing: border-box; }
+
           .wrap { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 18px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color: #0b0b0b; }
           .header { margin: 10px 0 18px; }
           .title { font-size: 30px; font-weight: 900; margin: 0; letter-spacing: -0.02em; }
@@ -393,7 +395,8 @@ export default function Page() {
 
           .layout { display: grid; grid-template-columns: 1.25fr 0.95fr; gap: 16px; align-items: start; }
           .leftCol, .rightCol { display: block; }
-          .card { background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); }
+
+          .card { background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); overflow: hidden; }
           .cardTitle { font-weight: 900; font-size: 18px; margin-bottom: 10px; }
 
           .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -408,9 +411,30 @@ export default function Page() {
           .calTitle { font-weight: 900; font-size: 18px; text-align: center; flex: 1; }
           .navBtn { padding: 12px 16px; font-size: 18px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.18); background: rgba(255,255,255,0.9); cursor: pointer; }
 
-          .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; font-weight: 900; margin-top: 8px; opacity: 0.8; }
-          .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 8px; }
-          .cell { height: 74px; border-radius: 14px; padding: 10px; text-align: left; }
+          /* ✅ anti-débordement: minmax(0,1fr) + width 100% + min-width 0 */
+          .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+          }
+
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+          }
+
+          .cell {
+            width: 100%;
+            min-width: 0;
+            height: 74px;
+            border-radius: 14px;
+            padding: 10px;
+            text-align: left;
+          }
+
           .cell.empty { background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.04); }
           .cell.free { background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.10); }
           .cell.reserved { background: rgba(17,17,17,0.98); border: 1px solid rgba(17,17,17,0.98); color: white; }
@@ -420,20 +444,21 @@ export default function Page() {
           .list { margin: 0; padding-left: 18px; }
           .link { border: none; background: transparent; text-decoration: underline; cursor: pointer; padding: 0; font-size: 14px; }
 
-          /* Desktop widths */
           @media (min-width: 901px) {
             .input, select { width: auto; }
             .btnPrimary, .btnGhost, .btnDanger { width: auto; }
             .row .input { width: auto; }
           }
 
-          /* ✅ Mobile: order = New reservation first (rightCol), then calendar (leftCol), then list stays in rightCol under form */
+          /* ✅ Mobile: ordre = new reservation, puis calendrier, puis liste */
           @media (max-width: 900px) {
             .layout { grid-template-columns: 1fr; }
             .rightCol { order: 1; }
             .leftCol { order: 2; }
             .title { font-size: 26px; }
-            .cell { height: 68px; }
+
+            .weekdays, .grid { gap: 6px; }
+            .cell { height: 68px; padding: 8px; }
           }
         `
       }
@@ -452,7 +477,7 @@ export default function Page() {
         "div",
         { className: "layout" },
 
-        // LEFT: Calendar (will be second on mobile)
+        // LEFT: Calendar
         h(
           "div",
           { className: "leftCol" },
@@ -485,12 +510,11 @@ export default function Page() {
           )
         ),
 
-        // RIGHT: New reservation + edit + list (will be first on mobile)
+        // RIGHT: New reservation + edit + list
         h(
           "div",
           { className: "rightCol" },
 
-          // New reservation first
           h(
             "div",
             { className: "card" },
@@ -534,10 +558,8 @@ export default function Page() {
             message ? h("p", { style: { marginTop: 10 } }, message) : null
           ),
 
-          // Edit panel
           editing ? h("div", { style: { marginTop: 16 } }, editPanel()) : null,
 
-          // List last
           h(
             "div",
             { className: "card", style: { marginTop: 16 } },
