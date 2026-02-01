@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 type Reservation = {
   id: string;
@@ -15,6 +15,8 @@ function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
 }
 
 export default function Page() {
+  const h = React.createElement;
+
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [name, setName] = useState("");
   const [start, setStart] = useState("");
@@ -67,11 +69,7 @@ export default function Page() {
     const res = await fetch("/api/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        start_date: start,
-        end_date: end
-      })
+      body: JSON.stringify({ name, start_date: start, end_date: end })
     });
 
     const data = await res.json();
@@ -83,16 +81,66 @@ export default function Page() {
       setStart("");
       setEnd("");
       setMessage("Réservation enregistrée ✅");
-      loadReservations();
+      await loadReservations();
     }
 
     setLoading(false);
   }
 
-  return (
-    <main style={{ maxWidth: 900, margin: "40px auto", padding: 20 }}>
-      <h1>🏠 Maison Corse — Réservations</h1>
+  return h(
+    "main",
+    { style: { maxWidth: 900, margin: "40px auto", padding: 20 } },
+    h("h1", null, "Maison Corse — Réservations"),
 
-      <section style={{ marginTop: 30 }}>
-        <h2>Nouvelle réservation</
+    h(
+      "section",
+      { style: { marginTop: 30 } },
+      h("h2", null, "Nouvelle réservation"),
+      h(
+        "div",
+        { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
+        h("input", {
+          placeholder: "Nom",
+          value: name,
+          onChange: (e: any) => setName(e.target.value)
+        }),
+        h("input", {
+          type: "date",
+          value: start,
+          onChange: (e: any) => setStart(e.target.value)
+        }),
+        h("input", {
+          type: "date",
+          value: end,
+          onChange: (e: any) => setEnd(e.target.value)
+        }),
+        h(
+          "button",
+          { onClick: submitReservation, disabled: loading },
+          loading ? "..." : "Réserver"
+        )
+      ),
+      message ? h("p", { style: { marginTop: 10 } }, message) : null
+    ),
 
+    h(
+      "section",
+      { style: { marginTop: 40 } },
+      h("h2", null, "Réservations"),
+      sortedReservations.length === 0
+        ? h("p", null, "Aucune réservation pour le moment.")
+        : h(
+            "ul",
+            null,
+            ...sortedReservations.map(r =>
+              h(
+                "li",
+                { key: r.id },
+                h("strong", null, r.name),
+                ` — ${r.start_date} → ${r.end_date}`
+              )
+            )
+          )
+    )
+  );
+}
