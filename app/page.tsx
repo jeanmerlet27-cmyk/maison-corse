@@ -88,44 +88,23 @@ export default function Page() {
   }
 
   return h(
-    "main",
+    "div",
     { style: { maxWidth: 900, margin: "40px auto", padding: 20 } },
     h("h1", null, "Maison Corse — Réservations"),
-
     h(
-      "section",
-      { style: { marginTop: 30 } },
-      h("h2", null, "Nouvelle réservation"),
-      h(
-        "div",
-        { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
-        h("input", {
-          placeholder: "Nom",
-          value: name,
-          onChange: (e: any) => setName(e.target.value)
-        }),
-        h("input", {
-          type: "date",
-          value: start,
-          onChange: (e: any) => setStart(e.target.value)
-        }),
-        h("input", {
-          type: "date",
-          value: end,
-          onChange: (e: any) => setEnd(e.target.value)
-        }),
-        h(
-          "button",
-          { onClick: submitReservation, disabled: loading },
-          loading ? "..." : "Réserver"
-        )
+      "div",
+      { style: { marginTop: 16 } },
+      h("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
+        h("input", { placeholder: "Nom", value: name, onChange: (e: any) => setName(e.target.value) }),
+        h("input", { type: "date", value: start, onChange: (e: any) => setStart(e.target.value) }),
+        h("input", { type: "date", value: end, onChange: (e: any) => setEnd(e.target.value) }),
+        h("button", { onClick: submitReservation, disabled: loading }, loading ? "..." : "Réserver")
       ),
       message ? h("p", { style: { marginTop: 10 } }, message) : null
     ),
-
     h(
-      "section",
-      { style: { marginTop: 40 } },
+      "div",
+      { style: { marginTop: 30 } },
       h("h2", null, "Réservations"),
       sortedReservations.length === 0
         ? h("p", null, "Aucune réservation pour le moment.")
@@ -133,12 +112,7 @@ export default function Page() {
             "ul",
             null,
             ...sortedReservations.map(r =>
-              h(
-                "li",
-                { key: r.id },
-                h("strong", null, r.name),
-                ` — ${r.start_date} → ${r.end_date}`
-              )
+              h("li", { key: r.id }, `${r.name} — ${r.start_date} → ${r.end_date}`)
             )
           )
     )
