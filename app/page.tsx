@@ -5,47 +5,31 @@ import React, { useEffect, useMemo, useState } from "react";
 type Reservation = {
   id: string;
   name: string;
-  start_date: string; // YYYY-MM-DD
-  end_date: string;   // YYYY-MM-DD
+  start_date: string;
+  end_date: string;
   created_at: string;
 };
 
-function pad2(n: number) {
-  return String(n).padStart(2, "0");
-}
-
-function toIsoDate(d: Date) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function fromIsoDate(s: string) {
-  // s = YYYY-MM-DD
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
-}
-
-function daysInMonth(year: number, monthIndex0: number) {
-  return new Date(year, monthIndex0 + 1, 0).getDate();
-}
-
-function weekdayIndexMonFirst(d: Date) {
-  // 0 = Monday ... 6 = Sunday
-  const js = d.getDay(); // 0=Sun
-  return (js + 6) % 7;
-}
-
-function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string) {
-  return !(aEnd < bStart || aStart > bEnd);
-}
-
-function isDayInReservation(dayIso: string, r: Reservation) {
-  return r.start_date <= dayIso && dayIso <= r.end_date;
-}
-
-const MONTHS_FR = [
+const MONTHS = [
   "Janvier","Février","Mars","Avril","Mai","Juin",
   "Juillet","Août","Septembre","Octobre","Novembre","Décembre"
 ];
+
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function iso(d: Date) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function daysInMonth(y: number, m: number) {
+  return new Date(y, m + 1, 0).getDate();
+}
+
+function overlaps(a1: string, a2: string, b1: string, b2: string) {
+  return !(a2 < b1 || a1 > b2);
+}
 
 export default function Page() {
   const h = React.createElement;
@@ -53,97 +37,57 @@ export default function Page() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Création
   const [name, setName] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Calendrier
   const [year, setYear] = useState(2026);
-  const [month, setMonth] = useState(0); // 0=Jan
+  const [month, setMonth] = useState(0);
 
-  // Edition
   const [editing, setEditing] = useState<Reservation | null>(null);
   const [editName, setEditName] = useState("");
   const [editStart, setEditStart] = useState("");
   const [editEnd, setEditEnd] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
-  async function loadReservations() {
-    const res = await fetch("/api/reservations", { cache: "no-store" });
-    const data = await res.json();
-    setReservations(data.reservations || []);
+  async function load() {
+    const r = await fetch("/api/reservations", { cache: "no-store" });
+    const d = await r.json();
+    setReservations(d.reservations || []);
   }
 
   useEffect(() => {
-    loadReservations();
+    load();
     const now = new Date();
     setYear(now.getFullYear());
     setMonth(now.getMonth());
   }, []);
 
-  const sorted = useMemo(() => {
-    return [...reservations].sort((a, b) => a.start_date.localeCompare(b.start_date));
-  }, [reservations]);
+  const sorted = useMemo(
+    () => [...reservations].sort((a, b) => a.start_date.localeCompare(b.start_date)),
+    [reservations]
+  );
 
-  const calendarGrid = useMemo(() => {
-    const first = new Date(year, month, 1);
-    const startOffset = weekdayIndexMonFirst(first); // 0..6
-    const dim = daysInMonth(year, month);
-
-    // 6 semaines x 7 jours = 42 cases
-    const cells: { iso: string | null; label: string }[] = [];
-    for (let i = 0; i < 42; i++) {
-      const dayNum = i - startOffset + 1;
-      if (dayNum < 1 || dayNum > dim) {
-        cells.push({ iso: null, label: "" });
-      } else {
-        const d = new Date(year, month, dayNum);
-        cells.push({ iso: toIsoDate(d), label: String(dayNum) });
-      }
-    }
-    return cells;
-  }, [year, month]);
-
-  function reservationForDay(dayIso: string) {
-    // si plusieurs se chevauchent (normalement impossible), on prend la première
-    return sorted.find(r => isDayInReservation(dayIso, r)) || null;
-  }
-
-  async function createReservation() {
+  async function create() {
     setMessage(null);
+    if (!name || !start || !end) return setMessage("Champs manquants.");
+    if (end < start) return setMessage("Dates invalides.");
 
-    if (!name || !start || !end) {
-      setMessage("Merci de remplir tous les champs.");
-      return;
-    }
-    if (end < start) {
-      setMessage("La date de fin doit être après la date de début.");
-      return;
-    }
-
-    // check rapide côté client
     const conflict = sorted.find(r => overlaps(start, end, r.start_date, r.end_date));
-    if (conflict) {
-      setMessage(`Conflit avec ${conflict.name} (${conflict.start_date} → ${conflict.end_date})`);
-      return;
-    }
+    if (conflict) return setMessage(`Conflit avec ${conflict.name}`);
 
     setLoading(true);
-
     const res = await fetch("/api/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, start_date: start, end_date: end })
     });
-
-    const data = await res.json();
-    if (!res.ok) setMessage(data.error || "Erreur lors de la réservation.");
+    const d = await res.json();
+    if (!res.ok) setMessage(d.error);
     else {
       setName(""); setStart(""); setEnd("");
-      setMessage("Réservation enregistrée.");
-      await loadReservations();
+      await load();
     }
     setLoading(false);
   }
@@ -153,25 +97,11 @@ export default function Page() {
     setEditName(r.name);
     setEditStart(r.start_date);
     setEditEnd(r.end_date);
-    setMessage(null);
   }
 
   async function saveEdit() {
     if (!editing) return;
-
-    setMessage(null);
-
-    if (!editName || !editStart || !editEnd) {
-      setMessage("Merci de remplir tous les champs d’édition.");
-      return;
-    }
-    if (editEnd < editStart) {
-      setMessage("La date de fin doit être après la date de début.");
-      return;
-    }
-
     setEditLoading(true);
-
     const res = await fetch("/api/reservations", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -182,178 +112,113 @@ export default function Page() {
         end_date: editEnd
       })
     });
-
-    const data = await res.json();
-    if (!res.ok) setMessage(data.error || "Erreur lors de la modification.");
+    const d = await res.json();
+    if (!res.ok) setMessage(d.error);
     else {
       setEditing(null);
-      setMessage("Modification enregistrée.");
-      await loadReservations();
+      await load();
     }
-
     setEditLoading(false);
   }
 
-  function yearOptions() {
-    const opts: any[] = [];
-    for (let y = 2026; y <= 2030; y++) {
-      opts.push(h("option", { key: y, value: y }, String(y)));
-    }
-    return opts;
+  async function deleteReservation() {
+    if (!editing) return;
+    const ok = confirm(`Supprimer la réservation de ${editing.name} ?`);
+    if (!ok) return;
+
+    setEditLoading(true);
+    await fetch("/api/reservations", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: editing.id })
+    });
+    setEditing(null);
+    await load();
+    setEditLoading(false);
   }
 
-  function weekdayHeader() {
-    const names = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
-    return h(
-      "div",
-      { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 12, fontWeight: 700 } },
-      ...names.map(n => h("div", { key: n, style: { textAlign: "center" } }, n))
-    );
-  }
+  function calendar() {
+    const first = new Date(year, month, 1);
+    const offset = (first.getDay() + 6) % 7;
+    const total = daysInMonth(year, month);
 
-  function calendarBody() {
-    return h(
-      "div",
-      { style: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8 } },
-      ...calendarGrid.map((c, idx) => {
-        if (!c.iso) {
-          return h("div", { key: idx, style: { height: 74, borderRadius: 12, background: "#f5f5f5" } });
-        }
-        const r = reservationForDay(c.iso);
-        const isReserved = !!r;
-
-        return h(
-          "button",
-          {
-            key: idx,
-            onClick: () => { if (r) openEdit(r); },
-            disabled: !r,
-            title: r ? `${r.name} (${r.start_date} → ${r.end_date})` : "",
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      const d = i - offset + 1;
+      if (d < 1 || d > total) {
+        cells.push(h("div", { key: i }));
+      } else {
+        const dateIso = iso(new Date(year, month, d));
+        const r = sorted.find(x => x.start_date <= dateIso && dateIso <= x.end_date);
+        cells.push(
+          h("button", {
+            key: i,
+            onClick: () => r && openEdit(r),
             style: {
-              height: 74,
-              borderRadius: 12,
-              border: "1px solid #e6e6e6",
-              background: isReserved ? "#111" : "white",
-              color: isReserved ? "white" : "#111",
-              padding: 10,
-              textAlign: "left",
-              cursor: r ? "pointer" : "default"
+              height: 70,
+              borderRadius: 10,
+              border: "1px solid #ddd",
+              background: r ? "#111" : "white",
+              color: r ? "white" : "#111",
+              cursor: r ? "pointer" : "default",
+              padding: 8
             }
           },
-          h("div", { style: { fontWeight: 800 } }, c.label),
-          r ? h("div", { style: { marginTop: 6, fontSize: 12, opacity: 0.9 } }, r.name) : null
-        );
-      })
-    );
-  }
-
-  function reservationsList() {
-    return sorted.length === 0
-      ? h("p", null, "Aucune réservation.")
-      : h(
-          "ul",
-          null,
-          ...sorted.map(r =>
-            h(
-              "li",
-              { key: r.id, style: { marginBottom: 8 } },
-              h("button", { onClick: () => openEdit(r), style: { border: "none", background: "transparent", textDecoration: "underline", cursor: "pointer", padding: 0 } },
-                `${r.name} — ${r.start_date} → ${r.end_date}`
-              )
-            )
+          h("div", { style: { fontWeight: 700 } }, d),
+          r ? h("div", { style: { fontSize: 12 } }, r.name) : null
           )
         );
+      }
+    }
+    return h("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "repeat(7, 1fr)",
+        gap: 8,
+        marginTop: 12
+      }
+    }, ...cells);
   }
 
-  function editPanel() {
-    if (!editing) return null;
-
-    return h(
-      "div",
-      { style: { marginTop: 16, padding: 14, border: "1px solid #ddd", borderRadius: 12, background: "white" } },
-      h("h3", { style: { marginTop: 0 } }, "Modifier une réservation"),
-      h("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
-        h("input", { value: editName, onChange: (e: any) => setEditName(e.target.value), style: { padding: 10, borderRadius: 10, border: "1px solid #ddd" } }),
-        h("input", { type: "date", value: editStart, onChange: (e: any) => setEditStart(e.target.value), style: { padding: 10, borderRadius: 10, border: "1px solid #ddd" } }),
-        h("input", { type: "date", value: editEnd, onChange: (e: any) => setEditEnd(e.target.value), style: { padding: 10, borderRadius: 10, border: "1px solid #ddd" } }),
-        h("button", {
-          onClick: saveEdit,
-          disabled: editLoading,
-          style: { padding: "10px 14px", borderRadius: 10, border: "1px solid #111", background: "#111", color: "white", fontWeight: 700, cursor: "pointer" }
-        }, editLoading ? "..." : "Enregistrer"),
-        h("button", {
-          onClick: () => setEditing(null),
-          style: { padding: "10px 14px", borderRadius: 10, border: "1px solid #ddd", background: "white", cursor: "pointer" }
-        }, "Annuler")
-      )
-    );
-  }
-
-  return h(
-    "div",
-    { style: { maxWidth: 1100, margin: "30px auto", padding: 20, fontFamily: "system-ui" } },
+  return h("div", { style: { maxWidth: 1100, margin: "30px auto", padding: 20, fontFamily: "system-ui" } },
 
     h("h1", null, "Maison Corse — Réservations"),
 
-    h(
-      "div",
-      { style: { display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, alignItems: "start", marginTop: 16 } },
+    h("div", { style: { display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16 } },
 
-      // Colonne gauche: calendrier
-      h(
-        "div",
-        { style: { padding: 16, border: "1px solid #eee", borderRadius: 14, background: "white" } },
-
-        h("h2", { style: { marginTop: 0 } }, "Calendrier"),
-
-        h("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" } },
-          h("select", { value: year, onChange: (e: any) => setYear(Number(e.target.value)), style: { padding: 10, borderRadius: 10, border: "1px solid #ddd" } }, ...yearOptions()),
-          h("select", { value: month, onChange: (e: any) => setMonth(Number(e.target.value)), style: { padding: 10, borderRadius: 10, border: "1px solid #ddd" } },
-            ...MONTHS_FR.map((m, i) => h("option", { key: i, value: i }, m))
+      h("div", { style: { padding: 16, border: "1px solid #eee", borderRadius: 14 } },
+        h("h2", null, "Calendrier"),
+        h("div", { style: { display: "flex", gap: 8 } },
+          h("select", { value: year, onChange: (e:any) => setYear(+e.target.value) },
+            ...Array.from({ length: 5 }, (_, i) => h("option", { key: i, value: 2026 + i }, 2026 + i))
           ),
-          h("button", {
-            onClick: () => setMonth(m => (m + 11) % 12),
-            style: { padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", background: "white", cursor: "pointer" }
-          }, "◀"),
-          h("button", {
-            onClick: () => setMonth(m => (m + 1) % 12),
-            style: { padding: "10px 12px", borderRadius: 10, border: "1px solid #ddd", background: "white", cursor: "pointer" }
-          }, "▶")
+          h("select", { value: month, onChange: (e:any) => setMonth(+e.target.value) },
+            ...MONTHS.map((m, i) => h("option", { key: i, value: i }, m))
+          )
         ),
-
-        weekdayHeader(),
-        calendarBody(),
-
-        h("p", { style: { marginTop: 12, opacity: 0.75 } },
-          "Clique sur un jour réservé pour ouvrir la réservation et modifier."
-        )
+        calendar()
       ),
 
-      // Colonne droite: création + liste
-      h(
-        "div",
-        null,
-        h(
-          "div",
-          { style: { padding: 16, border: "1px solid #eee", borderRadius: 14, background: "white" } },
-          h("h2", { style: { marginTop: 0 } }, "Nouvelle réservation"),
-          h("div", { style: { display: "flex", gap: 10, flexWrap: "wrap" } },
-            h("input", { placeholder: "Nom", value: name, onChange: (e: any) => setName(e.target.value), style: { padding: 10, borderRadius: 10, border: "1px solid #ddd" } }),
-            h("input", { type: "date", value: start, onChange: (e: any) => setStart(e.target.value), style: { padding: 10, borderRadius: 10, border: "1px solid #ddd" } }),
-            h("input", { type: "date", value: end, onChange: (e: any) => setEnd(e.target.value), style: { padding: 10, borderRadius: 10, border: "1px solid #ddd" } }),
-            h("button", { onClick: createReservation, disabled: loading, style: { padding: "10px 14px", borderRadius: 10, border: "1px solid #111", background: "#111", color: "white", fontWeight: 700, cursor: "pointer" } }, loading ? "..." : "Réserver")
-          ),
-          message ? h("p", { style: { marginTop: 10 } }, message) : null
+      h("div", null,
+
+        h("div", { style: { padding: 16, border: "1px solid #eee", borderRadius: 14 } },
+          h("h2", null, "Nouvelle réservation"),
+          h("input", { placeholder: "Nom", value: name, onChange: (e:any) => setName(e.target.value) }),
+          h("input", { type: "date", value: start, onChange: (e:any) => setStart(e.target.value) }),
+          h("input", { type: "date", value: end, onChange: (e:any) => setEnd(e.target.value) }),
+          h("button", { onClick: create }, loading ? "..." : "Réserver"),
+          message ? h("p", null, message) : null
         ),
 
-        editPanel(),
-
-        h(
-          "div",
-          { style: { marginTop: 16, padding: 16, border: "1px solid #eee", borderRadius: 14, background: "white" } },
-          h("h2", { style: { marginTop: 0 } }, "Réservations"),
-          reservationsList()
-        )
+        editing ? h("div", { style: { marginTop: 16, padding: 16, border: "1px solid #ddd", borderRadius: 14 } },
+          h("h3", null, "Modifier"),
+          h("input", { value: editName, onChange: (e:any) => setEditName(e.target.value) }),
+          h("input", { type: "date", value: editStart, onChange: (e:any) => setEditStart(e.target.value) }),
+          h("input", { type: "date", value: editEnd, onChange: (e:any) => setEditEnd(e.target.value) }),
+          h("button", { onClick: saveEdit }, editLoading ? "..." : "Enregistrer"),
+          h("button", { onClick: deleteReservation, style: { color: "red" } }, "Supprimer"),
+          h("button", { onClick: () => setEditing(null) }, "Annuler")
+        ) : null
       )
     )
   );
