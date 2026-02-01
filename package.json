@@ -1,4 +1,4 @@
-	{
+{
   "name": "maison-corse",
   "private": true,
   "scripts": {
@@ -7,9 +7,15 @@
     "start": "next start"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0",
-    "next": "^14.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "@supabase/supabase-js": "^2.39.5",
+    "next": "14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.11.30",
+    "@types/react": "^18.2.74",
+    "@types/react-dom": "^18.2.24"
   }
 }
