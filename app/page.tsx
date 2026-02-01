@@ -50,9 +50,9 @@ export default function Page() {
   const [end, setEnd] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Calendar
-  const [year, setYear] = useState<number>(MIN_YEAR);
-  const [month, setMonth] = useState<number>(0); // 0..11
+  // Calendar (illimité)
+  const [year, setYear] = useState<number>(new Date().getFullYear());
+  const [month, setMonth] = useState<number>(new Date().getMonth()); // 0..11
 
   // Edit
   const [editing, setEditing] = useState<Reservation | null>(null);
@@ -69,22 +69,6 @@ export default function Page() {
 
   useEffect(() => {
     loadReservations();
-
-    // Default to current month/year if in range; otherwise MIN_YEAR Jan
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-
-    if (y < MIN_YEAR) {
-      setYear(MIN_YEAR);
-      setMonth(0);
-    } else if (y > MAX_YEAR) {
-      setYear(MAX_YEAR);
-      setMonth(11);
-    } else {
-      setYear(y);
-      setMonth(m);
-    }
   }, []);
 
   const sorted = useMemo(() => {
@@ -114,35 +98,33 @@ export default function Page() {
     return `${MONTHS_FR[month]} ${year}`;
   }
 
-
-
+  // ✅ Modif 3: navigation illimitée
   function goPrevMonth() {
-  setMessage(null);
-  setEditing(null);
+    setMessage(null);
+    setEditing(null);
 
-  setMonth((m) => {
-    if (m === 0) {
-      setYear((y) => y - 1);
-      return 11;
-    }
-    return m - 1;
-  });
-}
+    setMonth((m) => {
+      if (m === 0) {
+        setYear((y) => y - 1);
+        return 11;
+      }
+      return m - 1;
+    });
+  }
 
-function goNextMonth() {
-  setMessage(null);
-  setEditing(null);
+  function goNextMonth() {
+    setMessage(null);
+    setEditing(null);
 
-  setMonth((m) => {
-    if (m === 11) {
-      setYear((y) => y + 1);
-      return 0;
-    }
-    return m + 1;
-  });
-}
+    setMonth((m) => {
+      if (m === 11) {
+        setYear((y) => y + 1);
+        return 0;
+      }
+      return m + 1;
+    });
+  }
 
-  
   function reservationForDay(dayIso: string) {
     return sorted.find((r) => r.start_date <= dayIso && dayIso <= r.end_date) || null;
   }
@@ -266,9 +248,10 @@ function goNextMonth() {
     setEditLoading(false);
   }
 
+  // ✅ Select année pratique : fenêtre ±20 ans autour de l’année courante affichée
   function yearOptions() {
     const opts: any[] = [];
-    for (let y = MIN_YEAR; y <= MAX_YEAR; y++) {
+    for (let y = year - 20; y <= year + 20; y++) {
       opts.push(h("option", { key: y, value: y }, String(y)));
     }
     return opts;
@@ -377,6 +360,7 @@ function goNextMonth() {
     );
   }
 
+  // Ton image Unsplash (URL directe)
   const backgroundImageDirect =
     "https://images.unsplash.com/photo-1592986471102-83f98319fe2d?auto=format&fit=crop&fm=jpg&q=80&w=2400";
 
@@ -392,10 +376,8 @@ function goNextMonth() {
       }
     },
 
-    // a small overlay for readability
     h("div", { className: "overlay" }),
 
-    // styles (incl. mobile)
     h("style", {
       dangerouslySetInnerHTML: {
         __html: `
@@ -418,9 +400,8 @@ function goNextMonth() {
           .muted { opacity: 0.75; margin: 10px 0 0; }
 
           .calHeader { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
-          .calTitle { font-weight: 900; font-size: 18px; }
+          .calTitle { font-weight: 900; font-size: 18px; text-align: center; flex: 1; }
           .navBtn { padding: 12px 16px; font-size: 18px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.18); background: rgba(255,255,255,0.9); cursor: pointer; }
-          .navBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
           .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; font-weight: 900; margin-top: 8px; opacity: 0.8; }
           .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 8px; }
@@ -440,7 +421,6 @@ function goNextMonth() {
             .cell { height: 68px; }
             .input, select { width: 100%; }
             .btnPrimary, .btnGhost, .btnDanger { width: 100%; }
-            .calTitle { text-align: center; flex: 1; }
           }
         `
       }
@@ -465,34 +445,19 @@ function goNextMonth() {
           { className: "card" },
           h("div", { className: "cardTitle" }, "Calendrier"),
 
-          // mobile-first nav
           h(
             "div",
             { className: "calHeader" },
-            h(
-              "button",
-              {
-                className: "navBtn",
-                onClick: goPrevMonth,
-              },
-              "◀"
-            ),
+            h("button", { className: "navBtn", onClick: goPrevMonth }, "◀"),
             h("div", { className: "calTitle" }, monthLabel()),
-            h(
-              "button",
-              {
-                className: "navBtn",
-                onClick: goNextMonth,
-              },
-              "▶"
-            )
+            h("button", { className: "navBtn", onClick: goNextMonth }, "▶")
           ),
 
           // quick year jump (optional but useful)
           h("div", { className: "row", style: { marginBottom: 6 } },
             h("select", {
               value: year,
-              onChange: (e: any) => { setYear(Number(e.target.value)); setEditing(null); setMessage(null); },
+              onChange: (e: any) => { setYear(Number(e.target.value)); setEditing(null); setMessage(null); }
             }, ...yearOptions())
           ),
 
